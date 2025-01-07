@@ -56,7 +56,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 
-const props = defineProps<{
+defineProps<{
   modelValue: boolean
 }>()
 
@@ -65,7 +65,7 @@ const emit = defineEmits<{
 }>()
 
 interface LLMConfig {
-  provider: string
+  provider: 'moonshot' | 'deepseek' | 'custom'
   baseUrl: string
   apiKey: string
   model: string
@@ -84,7 +84,7 @@ const defaultConfigs = {
     baseUrl: '',
     model: ''
   }
-}
+} as const
 
 const config = ref<LLMConfig>({
   provider: 'moonshot',

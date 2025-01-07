@@ -1,6 +1,5 @@
 import { defineStore } from 'pinia';
-import type { Item, ItemGenerateResponse } from '@/types/item';
-import { v4 as uuidv4 } from 'uuid';
+import type { Item } from '../types/item';
 
 interface InventoryState {
   items: Item[];
@@ -14,27 +13,16 @@ export const useInventoryStore = defineStore('inventory', {
   }),
 
   actions: {
-    addItem(itemInfo: ItemGenerateResponse) {
-      console.log('添加物品到store:', itemInfo)
-      // 确保设置必要的属性
-      const item: Item = {
-        id: uuidv4(),
-        name: itemInfo.name,
-        description: itemInfo.description,
-        weight: itemInfo.weight,
-        value: itemInfo.value,
-        backgroundColor: itemInfo.backgroundColor,
-        submitted: false  // 新物品默认未提交
-      }
-      console.log('转换后的物品:', item)
+    addItem(item: Item) {
+      console.log('添加物品到store:', item)
       this.items.push(item);
       saveItems(this.items);
       console.log('保存后的库存:', this.items)
     },
 
-    removeItem(itemId: string) {
-      const index = this.items.findIndex(item => item.id === itemId);
-      if (index !== -1) {
+    removeItem(item: Item) {
+      const index = this.items.findIndex(i => i.id === item.id);
+      if (index > -1) {
         this.items.splice(index, 1);
         saveItems(this.items);
       }

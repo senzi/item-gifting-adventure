@@ -23,7 +23,7 @@ const INITIAL_LEVELS: Level[] = [
 
 如果物品对森林有帮助（比如种子、水、肥料等），就接受它；如果物品对森林有害或无关，就拒绝它。
 请根据物品的描述做出合理的判断。`,
-    npcAvatar: "/assets/forest-guardian.png"
+    npcAvatar: "/assets/forest-guardian.jpeg"
   },
   {
     id: 2,
@@ -43,7 +43,7 @@ const INITIAL_LEVELS: Level[] = [
 如果物品与海洋保护无关，也要婉拒。
 
 请根据物品的特性和对海洋环境的潜在影响做出合理判断。回复时要体现出对海洋生态的关心。`,
-    npcAvatar: "/assets/ocean-guardian.png"
+    npcAvatar: "/assets/ocean-guardian.jpeg"
   },
   {
     id: 3,
@@ -65,7 +65,7 @@ const INITIAL_LEVELS: Level[] = [
 
 如果物品不够珍贵（价值低于200金币），要委婉提醒玩家寻找更有价值的物品。
 如果物品价值足够但不适合收藏或缺乏实用性，也要说明原因并拒绝。`,
-    npcAvatar: "/assets/merchant-sage.png"
+    npcAvatar: "/assets/merchant-sage.jpeg"
 },
 ];
 
@@ -91,8 +91,7 @@ export const useLevelStore = defineStore('level', {
   },
 
   actions: {
-    async submitItem({ levelId, itemInfo, prompt }: {
-      levelId: number,
+    async submitItem({ itemInfo, prompt }: {
       itemInfo: Item,
       prompt: string
     }): Promise<LevelResponse> {

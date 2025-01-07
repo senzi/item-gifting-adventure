@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import type { Level } from '@/types/level'
-import { useLevelStore } from '@/stores/level'
+import type { Level } from '../../types/level'
+import { useLevelStore } from '../../stores/level'
 
 const props = defineProps<{
   level: Level

@@ -26,13 +26,9 @@
 <script setup lang="ts">
 import type { Item } from '../../types/item'
 
-const props = defineProps<{
-  item: Item | null
-}>()
+defineProps<{ item: Item | null }>()
 
-defineEmits<{
-  (e: 'give'): void
-}>()
+defineEmits<{ (e: 'give'): void }>()
 </script>
 
 <style scoped>

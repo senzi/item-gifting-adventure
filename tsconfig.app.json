@@ -3,6 +3,8 @@
   "compilerOptions": {
     "incremental": true,
     "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.app.tsbuildinfo",
+    "composite": true,
+    "emitDeclarationOnly": true,
 
     /* Linting */
     "strict": true,

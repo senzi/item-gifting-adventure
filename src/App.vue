@@ -23,10 +23,20 @@ const selectedItem = computed(() => {
   return inventoryStore.items[selectedItemIndex.value] || null
 })
 
-const handleItemGenerated = (item: ItemGenerateResponse) => {
+const handleItemGenerated = (itemInfo: ItemGenerateResponse) => {
   try {
+    const item: Item = {
+      id: crypto.randomUUID(),
+      name: itemInfo.name,
+      description: itemInfo.description,
+      weight: itemInfo.weight,
+      value: itemInfo.value,
+      backgroundColor: itemInfo.backgroundColor,
+      submitted: false
+    }
     inventoryStore.addItem(item)
   } catch (error) {
+    console.error('Error adding item:', error)
   }
 }
 
@@ -35,13 +45,12 @@ const handleGiveItem = async () => {
 
   // 检查物品是否已经提交过
   if (selectedItem.value.submitted) {
-    levelCardRef.value?.updateDialog("我说过了，这个东西我不要")
+    levelCardRef.value?.updateDialog("这个物品已经被提交过了")
     return // 直接返回，不继续执行
   }
 
   try {
     const response = await levelStore.submitItem({
-      levelId: levelStore.currentLevel.id,
       itemInfo: selectedItem.value,
       prompt: levelStore.currentLevel.npcJudgePrompt
     })
@@ -51,7 +60,7 @@ const handleGiveItem = async () => {
 
     if (response.passed) {
       // 从背包中移除物品
-      inventoryStore.removeItem(selectedItem.value.id)
+      inventoryStore.removeItem(selectedItem.value)
       // 取消选中状态
       selectedItemIndex.value = -1
       // 显示下一关按钮
@@ -74,13 +83,12 @@ const handleItemDrop = async (item: Item) => {
   if (!levelStore.currentLevel || !item) return
 
   const response = await levelStore.submitItem({
-    levelId: levelStore.currentLevel.id,
     itemInfo: item,
     prompt: levelStore.currentLevel.npcJudgePrompt
   })
 
   if (response.passed) {
-    inventoryStore.removeItem(item.id)
+    inventoryStore.removeItem(item)
     selectedItemIndex.value = -1
   }
 }
