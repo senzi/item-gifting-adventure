@@ -1,0 +1,174 @@
+<template>
+  <div class="item-generator">
+    <div class="input-area">
+      <textarea
+        v-model="description"
+        placeholder="描述你想要生成的物品..."
+        :disabled="isGenerating || isFull"
+        rows="4"
+      ></textarea>
+      <button 
+        class="generate-button"
+        @click="generateItem"
+        :disabled="!canGenerate || isFull"
+      >
+        {{ buttonText }}
+      </button>
+    </div>
+    <div v-if="error" class="error-message">
+      {{ error }}
+    </div>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref, computed } from 'vue'
+import type { ItemGenerateResponse } from '../../types/item'
+
+const props = defineProps<{
+  inventoryCount: number
+  maxSlots?: number
+}>()
+
+const emit = defineEmits<{
+  (e: 'generated', item: ItemGenerateResponse): void
+}>()
+
+const description = ref('')
+const isGenerating = ref(false)
+const error = ref('')
+
+const isFull = computed(() => {
+  return props.inventoryCount >= (props.maxSlots || 10)
+})
+
+const buttonText = computed(() => {
+  if (isGenerating.value) return '生成中...'
+  if (isFull.value) return '背包已满'
+  return '生成物品'
+})
+
+const canGenerate = computed(() => {
+  return description.value.trim().length > 0 && !isGenerating.value && !isFull.value
+})
+
+const generateItem = async () => {
+  if (!canGenerate.value) return
+  
+  error.value = ''
+  isGenerating.value = true
+  
+  try {
+    const config = localStorage.getItem('llm-config')
+    if (!config) {
+      throw new Error('请先配置LLM API')
+    }
+    
+    const { baseUrl, apiKey, model } = JSON.parse(config)
+    
+    const response = await fetch(`${baseUrl}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`
+      },
+      body: JSON.stringify({
+        model: model,
+        response_format: { type: 'json_object' },
+        messages: [
+          {
+            role: 'system',
+            content: `你是一个物品生成器。根据用户的描述，生成物品的JSON数据。
+返回的JSON格式必须严格遵循以下格式：
+{
+  "name": "物品名称",
+  "description": "物品的详细描述",
+  "weight": 0.5,  // 物品重量，单位：千克，必须是数字
+  "value": 100,   // 物品价值，单位：金币，必须是整数
+  "backgroundColor": "#4CAF50"  // 物品的背景色，必须是有效的CSS颜色值，建议使用柔和的颜色
+}`
+          },
+          {
+            role: 'user',
+            content: description.value
+          }
+        ]
+      })
+    })
+    
+    if (!response.ok) {
+      throw new Error('API请求失败')
+    }
+    
+    const data = await response.json()
+    const item = JSON.parse(data.choices[0].message.content)
+    
+    // 验证返回的数据格式
+    if (!item.name || !item.description || 
+        typeof item.weight !== 'number' || 
+        typeof item.value !== 'number' ||
+        !item.backgroundColor) {
+      throw new Error('生成的物品数据格式不正确')
+    }
+    
+    emit('generated', item)
+    description.value = ''
+  } catch (e) {
+    error.value = e instanceof Error ? e.message : '生成物品时出错'
+  } finally {
+    isGenerating.value = false
+  }
+}
+</script>
+
+<style scoped>
+.item-generator {
+  padding: 1rem;
+}
+
+.input-area {
+  display: flex;
+  gap: 1rem;
+}
+
+textarea {
+  flex: 1;
+  padding: 0.75rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  resize: none;
+  font-family: inherit;
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+textarea:disabled {
+  background: #f5f5f5;
+}
+
+.generate-button {
+  padding: 0 1.5rem;
+  background: #4CAF50;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: background 0.2s;
+}
+
+.generate-button:hover:not(:disabled) {
+  background: #45a049;
+}
+
+.generate-button:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+}
+
+.error-message {
+  margin-top: 0.5rem;
+  color: #f44336;
+  font-size: 0.875rem;
+}
+</style>
