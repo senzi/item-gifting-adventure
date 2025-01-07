@@ -31,7 +31,7 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  (e: 'generated', item: ItemGenerateResponse): void
+  (e: 'item-generated', item: ItemGenerateResponse): void
 }>()
 
 const description = ref('')
@@ -101,17 +101,30 @@ const generateItem = async () => {
     }
     
     const data = await response.json()
-    const item = JSON.parse(data.choices[0].message.content)
+    console.log('API返回数据:', data)
+    const generatedItem = JSON.parse(data.choices[0].message.content)
+    console.log('解析后的物品数据:', generatedItem)
     
     // 验证返回的数据格式
-    if (!item.name || !item.description || 
-        typeof item.weight !== 'number' || 
-        typeof item.value !== 'number' ||
-        !item.backgroundColor) {
+    if (!generatedItem.name || !generatedItem.description || 
+        typeof generatedItem.weight !== 'number' || 
+        typeof generatedItem.value !== 'number' ||
+        !generatedItem.backgroundColor) {
       throw new Error('生成的物品数据格式不正确')
     }
     
-    emit('generated', item)
+    // 确保所有必要的字段都存在
+    const item: ItemGenerateResponse = {
+      name: generatedItem.name,
+      description: generatedItem.description,
+      weight: generatedItem.weight,
+      value: generatedItem.value,
+      backgroundColor: generatedItem.backgroundColor
+    }
+    console.log('发送给父组件的物品数据:', item)
+    console.log('开始触发item-generated事件')
+    emit('item-generated', item)
+    console.log('item-generated事件已触发')
     description.value = ''
   } catch (e) {
     error.value = e instanceof Error ? e.message : '生成物品时出错'

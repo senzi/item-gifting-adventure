@@ -1,59 +1,86 @@
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from 'vue'
-import { ConfigButton, ConfigModal } from './components/LLMConfig'
+import { ref, computed } from 'vue'
+import ItemGenerator from './components/Generator/ItemGenerator.vue'
 import InventoryGrid from './components/Inventory/InventoryGrid.vue'
 import ItemDetail from './components/Inventory/ItemDetail.vue'
-import ItemGenerator from './components/Generator/ItemGenerator.vue'
+import LevelCard from './components/Level/LevelCard.vue'
+import { ConfigButton, ConfigModal } from './components/LLMConfig'
+import { useLevelStore } from './stores/level'
+import { useInventoryStore } from './stores/inventory'
 import type { Item, ItemGenerateResponse } from './types/item'
 
-const STORAGE_KEY = 'inventory-items'
+const levelStore = useLevelStore()
+const inventoryStore = useInventoryStore()
 
 const showConfig = ref(false)
-const items = ref<Item[]>([])
 const selectedItemIndex = ref(-1)
+const levelCardRef = ref<InstanceType<typeof LevelCard> | null>(null)
 
 const selectedItem = computed(() => {
-  if (selectedItemIndex.value === -1 || !items.value[selectedItemIndex.value]) {
+  if (selectedItemIndex.value === -1) {
     return null
   }
-  return items.value[selectedItemIndex.value]
+  return inventoryStore.items[selectedItemIndex.value] || null
 })
 
-// 监听物品变化并保存到localStorage
-watch(items, (newItems) => {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(newItems))
-}, { deep: true })
-
-// 组件加载时从localStorage读取物品数据
-onMounted(() => {
-  const savedItems = localStorage.getItem(STORAGE_KEY)
-  if (savedItems) {
-    try {
-      items.value = JSON.parse(savedItems)
-    } catch (e) {
-      console.error('Failed to load inventory items:', e)
-    }
+const handleItemGenerated = (item: ItemGenerateResponse) => {
+  try {
+    inventoryStore.addItem(item)
+  } catch (error) {
   }
-})
-
-const handleItemGenerated = (itemData: ItemGenerateResponse) => {
-  if (items.value.length >= 10) {
-    alert('物品栏已满！')
-    return
-  }
-  
-  const newItem: Item = {
-    id: crypto.randomUUID(),
-    ...itemData
-  }
-  
-  items.value.push(newItem)
-  selectedItemIndex.value = items.value.length - 1
 }
 
-const handleGiveItem = () => {
-  if (selectedItemIndex.value >= 0) {
-    items.value.splice(selectedItemIndex.value, 1)
+const handleGiveItem = async () => {
+  if (!selectedItem.value || !levelStore.currentLevel) return
+
+  // 检查物品是否已经提交过
+  if (selectedItem.value.submitted) {
+    levelCardRef.value?.updateDialog("我说过了，这个东西我不要")
+    return // 直接返回，不继续执行
+  }
+
+  try {
+    const response = await levelStore.submitItem({
+      levelId: levelStore.currentLevel.id,
+      itemInfo: selectedItem.value,
+      prompt: levelStore.currentLevel.npcJudgePrompt
+    })
+
+    // 更新NPC对话
+    levelCardRef.value?.updateDialog(response.npcReply)
+
+    if (response.passed) {
+      // 从背包中移除物品
+      inventoryStore.removeItem(selectedItem.value.id)
+      // 取消选中状态
+      selectedItemIndex.value = -1
+      // 显示下一关按钮
+      levelCardRef.value?.showNextLevelButton()
+    }
+  } catch (error) {
+    console.error('Error submitting item:', error)
+    levelCardRef.value?.updateDialog("抱歉，我现在有点忙，稍后再试试吧")
+  }
+}
+
+const handleLevelComplete = () => {
+  // 隐藏下一关按钮
+  levelCardRef.value?.hideNextLevelButton()
+  // 切换到下一关
+  levelStore.nextLevel()
+}
+
+const handleItemDrop = async (item: Item) => {
+  if (!levelStore.currentLevel || !item) return
+
+  const response = await levelStore.submitItem({
+    levelId: levelStore.currentLevel.id,
+    itemInfo: item,
+    prompt: levelStore.currentLevel.npcJudgePrompt
+  })
+
+  if (response.passed) {
+    inventoryStore.removeItem(item.id)
     selectedItemIndex.value = -1
   }
 }
@@ -61,88 +88,107 @@ const handleGiveItem = () => {
 
 <template>
   <div class="app-container">
-    <ConfigButton @click="showConfig = true" />
-    <ConfigModal v-model="showConfig" />
+    <ConfigButton class="config-button" @click="showConfig = true" />
     
-    <div class="game-container">
-      <div class="card npc-card">
-        <!-- NPC卡片内容将在这里添加 -->
-      </div>
-      
-      <div class="card inventory-card">
-        <ItemDetail
-          :item="selectedItem"
-          @give="handleGiveItem"
-        />
-        <InventoryGrid
-          :items="items"
-          :selected-index="selectedItemIndex"
-          @select="selectedItemIndex = $event"
+    <div class="game-content">
+      <div class="level-section">
+        <LevelCard
+          v-if="levelStore.currentLevel || levelStore.isGameCompleted"
+          ref="levelCardRef"
+          :level="levelStore.currentLevel || levelStore.levels[levelStore.levels.length - 1]"
+          @level-complete="handleLevelComplete"
         />
       </div>
-      
-      <div class="card generator-card">
-        <ItemGenerator 
-          @generated="handleItemGenerated"
-          :inventory-count="items.length"
-        />
+
+      <div class="main-section">
+        <div class="item-detail-section">
+          <ItemDetail
+            :item="selectedItem"
+            @give="handleGiveItem"
+          />
+        </div>
+
+        <div class="inventory-section">
+          <InventoryGrid
+            :items="inventoryStore.items"
+            :selected-index="selectedItemIndex"
+            @select="selectedItemIndex = $event"
+            @drop="handleItemDrop"
+          />
+        </div>
+
+        <div class="generator-section">
+          <ItemGenerator 
+            :inventory-count="inventoryStore.items.length"
+            @item-generated="handleItemGenerated" 
+          />
+        </div>
       </div>
     </div>
+
+    <ConfigModal
+      v-model="showConfig"
+    />
   </div>
 </template>
 
 <style scoped>
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: filter 300ms;
-}
-.logo:hover {
-  filter: drop-shadow(0 0 2em #646cffaa);
-}
-.logo.vue:hover {
-  filter: drop-shadow(0 0 2em #42b883aa);
-}
-</style>
-
-<style>
-body {
-  margin: 0;
-  padding: 0;
-  background-color: #f5f5f5;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen,
-    Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
-}
-
 .app-container {
-  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
   padding: 1rem;
+  gap: 1rem;
 }
 
-.game-container {
+.game-content {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  flex: 1;
+  align-items: center;
+}
+
+.level-section {
+  width: 100%;
   max-width: 800px;
   margin: 0 auto;
-  padding-top: 2rem;
 }
 
-.card {
+.main-section {
+  width: 100%;
+  max-width: 800px;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  flex: 1;
+}
+
+.item-detail-section {
   background: white;
   border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  padding: 1rem;
-  margin-bottom: 1rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
-.npc-card {
-  min-height: 200px;
+.inventory-section {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  min-height: 0;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
-.inventory-card {
-  min-height: 300px;
+.generator-section {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
-.generator-card {
-  min-height: 200px;
+.config-button {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
 }
 </style>

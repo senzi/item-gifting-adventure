@@ -1,6 +1,6 @@
 <template>
   <div class="item-detail">
-    <template v-if="item">
+    <div v-if="item" class="item-card" :style="{ backgroundColor: item.backgroundColor }">
       <h3>{{ item.name }}</h3>
       <p class="description">{{ item.description }}</p>
       <div class="stats">
@@ -16,7 +16,7 @@
       <button class="give-button" @click="$emit('give')">
         赠送物品
       </button>
-    </template>
+    </div>
     <div v-else class="empty-state">
       <p>选择一个物品查看详情</p>
     </div>
@@ -26,7 +26,7 @@
 <script setup lang="ts">
 import type { Item } from '../../types/item'
 
-defineProps<{
+const props = defineProps<{
   item: Item | null
 }>()
 
@@ -39,6 +39,12 @@ defineEmits<{
 .item-detail {
   padding: 1rem;
   min-height: 200px;
+}
+
+.item-card {
+  padding: 1rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 h3 {

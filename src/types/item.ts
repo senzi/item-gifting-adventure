@@ -5,6 +5,7 @@ export interface Item {
   weight: number
   value: number
   backgroundColor: string
+  submitted?: boolean  // 标记物品是否已经被提交过
 }
 
 export interface ItemGenerateResponse {
