@@ -13,6 +13,7 @@
             <select v-model="config.provider" @change="handleProviderChange">
               <option value="moonshot">Moonshot</option>
               <option value="deepseek">Deepseek</option>
+              <option value="gemini">Gemini</option>
               <option value="custom">Custom</option>
             </select>
           </div>
@@ -65,7 +66,7 @@ const emit = defineEmits<{
 }>()
 
 interface LLMConfig {
-  provider: 'moonshot' | 'deepseek' | 'custom'
+  provider: 'moonshot' | 'deepseek' | 'gemini' | 'custom'
   baseUrl: string
   apiKey: string
   model: string
@@ -79,6 +80,10 @@ const defaultConfigs = {
   deepseek: {
     baseUrl: 'https://api.deepseek.com/v1',
     model: 'deepseek-chat'
+  },
+  gemini: {
+    baseUrl: 'https://generativelanguage.googleapis.com/v1beta',
+    model: 'gemini-pro'
   },
   custom: {
     baseUrl: '',

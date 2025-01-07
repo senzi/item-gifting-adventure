@@ -15,6 +15,7 @@ const inventoryStore = useInventoryStore()
 const showConfig = ref(false)
 const selectedItemIndex = ref(-1)
 const levelCardRef = ref<InstanceType<typeof LevelCard> | null>(null)
+const pendingRemovalItem = ref<Item | null>(null)
 
 const selectedItem = computed(() => {
   if (selectedItemIndex.value === -1) {
@@ -22,6 +23,16 @@ const selectedItem = computed(() => {
   }
   return inventoryStore.items[selectedItemIndex.value] || null
 })
+
+// 处理物品选择变化
+const handleItemSelect = (index: number) => {
+  // 如果之前有待移除的物品，现在切换到新物品了，就移除之前的物品
+  if (pendingRemovalItem.value) {
+    inventoryStore.removeItem(pendingRemovalItem.value)
+    pendingRemovalItem.value = null
+  }
+  selectedItemIndex.value = index
+}
 
 const handleItemGenerated = (itemInfo: ItemGenerateResponse) => {
   try {
@@ -59,10 +70,8 @@ const handleGiveItem = async () => {
     levelCardRef.value?.updateDialog(response.npcReply)
 
     if (response.passed) {
-      // 从背包中移除物品
-      inventoryStore.removeItem(selectedItem.value)
-      // 取消选中状态
-      selectedItemIndex.value = -1
+      // 标记物品为待移除状态
+      pendingRemovalItem.value = selectedItem.value
       // 显示下一关按钮
       levelCardRef.value?.showNextLevelButton()
     }
@@ -73,6 +82,12 @@ const handleGiveItem = async () => {
 }
 
 const handleLevelComplete = () => {
+  // 如果有待移除的物品，现在移除它
+  if (pendingRemovalItem.value) {
+    inventoryStore.removeItem(pendingRemovalItem.value)
+    pendingRemovalItem.value = null
+    selectedItemIndex.value = -1
+  }
   // 隐藏下一关按钮
   levelCardRef.value?.hideNextLevelButton()
   // 切换到下一关
@@ -88,8 +103,8 @@ const handleItemDrop = async (item: Item) => {
   })
 
   if (response.passed) {
-    inventoryStore.removeItem(item)
-    selectedItemIndex.value = -1
+    pendingRemovalItem.value = item
+    levelCardRef.value?.showNextLevelButton()
   }
 }
 </script>
@@ -120,7 +135,7 @@ const handleItemDrop = async (item: Item) => {
           <InventoryGrid
             :items="inventoryStore.items"
             :selected-index="selectedItemIndex"
-            @select="selectedItemIndex = $event"
+            @select="handleItemSelect"
             @drop="handleItemDrop"
           />
         </div>
