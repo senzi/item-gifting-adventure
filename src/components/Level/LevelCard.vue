@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import type { Level } from '../../types/level'
 import { useLevelStore } from '../../stores/level'
 
@@ -11,6 +11,12 @@ const props = defineProps<{
 const levelStore = useLevelStore()
 const dialogText = ref(props.level.description)
 const showNextButton = ref(false)
+
+// 监听关卡变化
+watch(() => props.level, (newLevel) => {
+  dialogText.value = newLevel.description
+  showNextButton.value = false
+}, { immediate: true })
 
 // NPC头像点击处理
 const handleNpcClick = () => {

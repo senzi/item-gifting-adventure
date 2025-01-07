@@ -1,6 +1,6 @@
 <template>
   <div class="item-detail">
-    <div v-if="item" class="item-card" :style="{ backgroundColor: item.backgroundColor }">
+    <div v-if="item" class="item-card">
       <h3>{{ item.name }}</h3>
       <p class="description">{{ item.description }}</p>
       <div class="stats">
@@ -38,6 +38,7 @@ defineEmits<{ (e: 'give'): void }>()
 }
 
 .item-card {
+  background-color: white;
   padding: 1rem;
   border-radius: 8px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
